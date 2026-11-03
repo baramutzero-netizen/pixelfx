@@ -167,9 +167,12 @@ export function canvas(w, h, fill = [12, 11, 16, 255]) {
         for (let xx = 0; xx < sw; xx++) {
           const tx = x + xx;
           if (tx < 0 || tx >= w) continue;
-          const s = (yy * sw + xx) * 4, d = (ty * w + tx) * 4, a = src[s + 3] / 255;
-          for (let c = 0; c < 3; c++) data[d + c] = src[s + c] * a + data[d + c] * (1 - a);
-          data[d + 3] = Math.max(data[d + 3], src[s + 3]);
+          // straight-alpha "over": a translucent pixel keeps its own colour on a transparent sheet (it used to be mixed
+          // with the sheet's black-transparent fill, so glows, mist and smoke came out premultiplied: dark and grey over bright scenes)
+          const s = (yy * sw + xx) * 4, d = (ty * w + tx) * 4, a = src[s + 3] / 255, da = data[d + 3] / 255, oa = a + da * (1 - a);
+          if (oa <= 0) continue;
+          for (let c = 0; c < 3; c++) data[d + c] = (src[s + c] * a + data[d + c] * da * (1 - a)) / oa;
+          data[d + 3] = oa * 255;
         }
       }
     },
